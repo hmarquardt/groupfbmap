@@ -1,0 +1,19 @@
+# Node.js dependencies
+node_modules/
+
+# AWS Lambda deployment packages
+*.zip
+
+# macOS system files
+.DS_Store
+
+# Local AWS configuration files (contain account info or aren't needed in repo)
+lambda-trust-policy.json
+lambda-dynamodb-policy.json
+s3-cors-config.json
+api-cors-config.json
+
+# npm debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

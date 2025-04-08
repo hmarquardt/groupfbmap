@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GroupFBMap - Facebook Group Member Map</title>
+    <!-- <link rel="stylesheet" href="style.css"> Tailwind handles styling -->
+    <!-- Tailwind CSS Play CDN (for development/no-build) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Leaflet CSS CDN -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+</head>
+<body class="bg-gray-100 font-sans leading-normal tracking-normal">
+    <!-- Loading Indicator -->
+    <div id="loading-indicator" class="p-4 text-center">
+        <p>Loading GroupFBMap...</p>
+        <!-- Optional: Add a spinner later -->
+    </div>
+
+    <!-- Main App Container (hidden initially) -->
+    <div id="app-container" class="hidden container mx-auto p-4 md:p-6 lg:p-8 max-w-4xl">
+        <h1 class="text-3xl font-bold mb-6 text-center text-blue-700">GroupFBMap</h1>
+
+    <!-- Map container -->
+    <div id="map-view" class="hidden bg-white p-4 rounded shadow-lg"> <!-- Map View Container -->
+        <div id="map" class="h-80 md:h-[500px] w-full border border-gray-300 rounded mb-4"></div>
+        <!-- Buttons for map view like "Delete My Info", "Switch Group" will go here -->
+        <div class="mt-4 text-center">
+             <button id="manage-entry-button" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded mr-2 transition duration-150 ease-in-out">Manage My Entry</button>
+             <button id="switch-group-button" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out">Switch/View Group</button>
+        </div>
+    </div>
+
+    <!-- Getting Started Dialog (hidden initially) -->
+    <div id="getting-started-dialog" class="hidden bg-white p-6 rounded-lg shadow-lg max-w-lg mx-auto mt-8">
+        <h2 class="text-2xl font-bold text-center text-gray-800 mb-4">Welcome to Group Member Map!</h2>
+        <p class="text-center text-gray-600 mb-4">See where your Facebook group members are located and add yourself to the map.</p>
+        <!-- Placeholder for intro video -->
+        <div class="bg-gray-200 h-40 mb-6 rounded flex items-center justify-center text-gray-500 italic">
+            (Intro Video Placeholder)
+        </div>
+        <div class="mb-4">
+            <label for="group-id-input" class="block text-sm font-medium text-gray-700 mb-1">View Map by Group ID:</label>
+            <input type="text" id="group-id-input" placeholder="Enter Facebook Group ID" class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            <button id="view-group-button" class="mt-2 w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out">
+                View Group Map
+            </button>
+        </div>
+        <hr class="my-4">
+        <button id="join-map-button" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out">
+            Add Me to a Group Map
+        </button>
+    </div>
+
+    <!-- Join Group Dialog (placeholder structure, hidden) -->
+    <div id="join-dialog" class="hidden bg-white p-6 rounded-lg shadow-lg max-w-lg mx-auto mt-8">
+        <h2 class="text-2xl font-bold text-center text-gray-800 mb-4">Join Group Map</h2>
+        <form id="join-form">
+            <p class="text-sm text-gray-600 mb-2">Please grant location access when prompted.</p>
+            <p class="text-red-500 hidden mb-2" id="geolocation-error">Error: Geolocation access is required to add your location.</p>
+            <p class="text-red-500 hidden mb-2" id="join-error"></p> <!-- For general join errors -->
+
+            <div class="mb-3">
+                <label for="first-name-input" class="block text-sm font-medium text-gray-700 mb-1">First Name:</label>
+                <input type="text" id="first-name-input" required class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            </div>
+            <div class="mb-3">
+                <label for="group-profile-url-input" class="block text-sm font-medium text-gray-700 mb-1">Group Profile URL:</label>
+                <input type="url" id="group-profile-url-input" required placeholder="https://facebook.com/groups/GROUP_ID/user/MEMBER_ID" class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                <p class="text-xs text-gray-500 mt-1">Find this by going to the group, clicking 'Members', finding yourself, and copying the URL from your browser's address bar.</p>
+            </div>
+            <div class="mb-3">
+                <label for="avatar-input" class="block text-sm font-medium text-gray-700 mb-1">Avatar (Optional):</label>
+                <input type="file" id="avatar-input" accept="image/png, image/jpeg, image/gif, image/webp" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border file:border-gray-300 file:text-sm file:font-semibold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 cursor-pointer">
+                <p class="text-xs text-gray-500 mt-1">Max 1MB. Will be resized.</p>
+            </div>
+            <button type="submit" id="submit-join-button" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded disabled:opacity-50 transition duration-150 ease-in-out" disabled>
+                Submit My Location
+            </button>
+        </form>
+        <button type="button" id="cancel-join-button" class="mt-4 w-full bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition duration-150 ease-in-out">Cancel</button>
+    </div>
+
+     <!-- Delete Entry Dialog (placeholder structure, hidden) -->
+    <div id="delete-dialog" class="hidden bg-white p-6 rounded-lg shadow-lg max-w-lg mx-auto mt-8">
+        <h2 class="text-2xl font-bold text-center text-gray-800 mb-4">Delete My Entry</h2>
+        <form id="delete-form">
+             <p class="text-sm text-gray-600 mb-2">Enter the Delete Token you received when you joined this group's map.</p>
+             <p class="text-red-500 hidden mb-2" id="delete-error"></p> <!-- For delete errors -->
+
+             <div class="mb-3">
+                <label for="delete-token-input" class="block text-sm font-medium text-gray-700 mb-1">Delete Token:</label>
+                <input type="text" id="delete-token-input" required pattern="[a-f0-9]{32}" title="Enter the 32-character hexadecimal delete token" class="w-full p-2 border border-gray-300 rounded font-mono focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+             </div>
+             <button type="submit" id="submit-delete-button" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out">
+                Delete My Entry Permanently
+            </button>
+        </form>
+         <button type="button" id="cancel-delete-button" class="mt-4 w-full bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition duration-150 ease-in-out">Cancel</button>
+    </div>
+
+</div> <!-- End of #app-container -->
+
+    <!-- Leaflet JS CDN -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- App Script -->
+    <script src="script.js"></script>
+</body>
+</html>

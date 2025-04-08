@@ -1,23 +1,61 @@
+// AWS SDK v3 clients
+const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
+const { DynamoDBDocumentClient, QueryCommand } = require("@aws-sdk/lib-dynamodb");
+
+// Initialize DynamoDB Document Client
+const client = new DynamoDBClient({ region: process.env.AWS_REGION || "us-west-2" });
+const docClient = DynamoDBDocumentClient.from(client);
+const tableName = process.env.TABLE_NAME || "GroupMembers";
+
 exports.handler = async (event) => {
-  console.log("Event:", JSON.stringify(event, null, 2));
+    console.log("Event:", JSON.stringify(event, null, 2));
 
-  const groupId = event.pathParameters?.group_id || 'unknown_group';
+    // Extract group_id from path parameters
+    const groupId = event.pathParameters?.group_id;
 
-  // Placeholder logic: Return a dummy list of members
-  const dummyMembers = [
-    { first_name: "Alice", latitude: 40.7128, longitude: -74.0060, group_profile_url: `https://www.facebook.com/groups/${groupId}/user/1` },
-    { first_name: "Bob", latitude: 34.0522, longitude: -118.2437, group_profile_url: `https://www.facebook.com/groups/${groupId}/user/2` },
-  ];
+    if (!groupId) {
+        return {
+            statusCode: 400,
+            headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+            body: JSON.stringify({ error: "Missing group_id path parameter." }),
+        };
+    }
 
-  const response = {
-    statusCode: 200, // OK
-    headers: {
-      "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*", // Basic CORS for now
-    },
-    body: JSON.stringify(dummyMembers),
-  };
+    // --- Prepare DynamoDB Query ---
+    const params = {
+        TableName: tableName,
+        KeyConditionExpression: "group_id = :gid", // Query by Partition Key
+        ExpressionAttributeValues: {
+            ":gid": groupId,
+        },
+        // Specify only the attributes needed for the map display
+        ProjectionExpression: "first_name, latitude, longitude, profile_picture_url, group_profile_url",
+    };
 
-  console.log("Response:", JSON.stringify(response, null, 2));
-  return response;
+    const command = new QueryCommand(params);
+
+    // --- Execute Query ---
+    try {
+        const data = await docClient.send(command);
+        console.log("DynamoDB Query Success:", data.Items);
+
+        // Return the list of members (Items array)
+        const response = {
+            statusCode: 200, // OK
+            headers: {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+            },
+            body: JSON.stringify(data.Items || []), // Return empty array if no members found
+        };
+        return response;
+
+    } catch (dbError) {
+        console.error("DynamoDB Query Error:", dbError);
+        return {
+            statusCode: 500,
+            headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+            body: JSON.stringify({ error: "Could not retrieve group members.", details: dbError.message }),
+        };
+    }
 };
