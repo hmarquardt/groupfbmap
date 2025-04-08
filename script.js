@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- State Variables ---
     let currentLatitude = null;
     let currentLongitude = null;
-    const API_ENDPOINT = 'https://v4cpsska29.execute-api.us-west-2.amazonaws.com'; // From GFM-002 output
+    const API_ENDPOINT = 'https://v4cpsska29.execute-api.us-west-2.amazonaws.com/prod'; // Use the 'prod' stage endpoint
     let memberMarkers = L.layerGroup().addTo(map); // Layer group to hold markers
 
     // --- Helper Functions ---
