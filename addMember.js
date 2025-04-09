@@ -3,7 +3,7 @@ const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, PutCommand } = require("@aws-sdk/lib-dynamodb");
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 const crypto = require('crypto');
-const sharp = require('sharp'); // Image processing library
+const Jimp = require('jimp'); // Pure JS Image processing library
 
 // Initialize Clients
 const region = process.env.AWS_REGION || "us-west-2";
@@ -77,11 +77,11 @@ exports.handler = async (event) => {
             const base64Data = profile_picture_base64.replace(/^data:image\/\w+;base64,/, "");
             const imageBuffer = Buffer.from(base64Data, 'base64');
 
-            // Resize image using sharp
-            const resizedBuffer = await sharp(imageBuffer)
-                .resize({ width: MAX_AVATAR_WIDTH, withoutEnlargement: true }) // Resize width, maintain aspect ratio, don't enlarge small images
-                .jpeg({ quality: 80 }) // Convert to JPEG with quality setting
-                .toBuffer();
+            // Resize image using Jimp
+            const image = await Jimp.read(imageBuffer);
+            await image.resize(MAX_AVATAR_WIDTH, Jimp.AUTO); // Resize width, maintain aspect ratio
+            await image.quality(80); // Set JPEG quality
+            const resizedBuffer = await image.getBufferAsync(Jimp.MIME_JPEG); // Get buffer as JPEG
 
             // Define S3 key (e.g., group_id/member_id.jpg)
             const s3Key = `${group_id}/${member_id}.jpg`;
@@ -111,14 +111,29 @@ exports.handler = async (event) => {
         }
     }
 
+    // Helper function to generate dithered coordinate
+    const ditherCoordinate = (coordinate) => {
+        const minOffset = 0.005;
+        const maxOffset = 0.01;
+        // Random offset between minOffset and maxOffset
+        const offset = minOffset + Math.random() * (maxOffset - minOffset);
+        // Randomly add or subtract the offset
+        const sign = Math.random() < 0.5 ? -1 : 1;
+        return coordinate + sign * offset;
+    };
+
+    // Dither the coordinates before saving
+    const ditheredLatitude = ditherCoordinate(latitude);
+    const ditheredLongitude = ditherCoordinate(longitude);
+
     // --- Prepare DynamoDB Item ---
     const item = {
         group_id,
         member_id,
         first_name,
         group_profile_url,
-        latitude,
-        longitude,
+        latitude: ditheredLatitude,   // Use dithered value
+        longitude: ditheredLongitude, // Use dithered value
         delete_token,
         profile_picture_url, // Will be null if no avatar or if upload failed
         createdAt: new Date().toISOString(),
