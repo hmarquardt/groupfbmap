@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentLatitude = null;
     let currentLongitude = null;
     const API_ENDPOINT = 'https://v4cpsska29.execute-api.us-west-2.amazonaws.com/prod'; // Use the 'prod' stage endpoint
-    let memberMarkers = L.layerGroup().addTo(map); // Layer group to hold markers
+    let memberMarkers = L.featureGroup().addTo(map); // Use FeatureGroup to get access to getBounds()
 
     // --- Helper Functions ---
     function showView(viewToShow) {
