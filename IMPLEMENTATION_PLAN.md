@@ -177,3 +177,59 @@ graph TD
 
     style F fill:#lightgreen,stroke:#333,stroke-width:2px
     style G fill:#grey,stroke:#333,stroke-width:1px
+```
+
+---
+
+## Feature: FAQ Navbar and Content (2025-04-09)
+
+This section outlines the plan to add a simple FAQ navbar link that toggles the visibility of a formatted FAQ content section.
+
+**1. Modify `index.html`:**
+
+*   **Add Navbar:** Insert a `<nav>` element directly inside the `<body>` tag, before `#notification-banner`.
+    *   Style using Tailwind (e.g., `bg-gray-800`, `text-white`, `p-2`, `flex`, `justify-end`).
+    *   Add an `<a id="faq-link">` tag inside with text "FAQ" and appropriate styling (e.g., `hover:underline`, `cursor-pointer`).
+*   **Add FAQ Content Div:** Insert `<div id="faq-content">` immediately after the `<nav>`.
+    *   Add the `hidden` Tailwind class.
+    *   Style using Tailwind (e.g., `bg-white`, `p-6`, `mt-2`, `rounded`, `shadow-md`, `max-w-3xl`, `mx-auto`).
+*   **Format FAQ Text:** Populate `#faq-content` with the provided FAQ text using semantic HTML (`h1`, `h2`, `p`, `a`, `code`, `ul`, `li`).
+
+**2. Modify `script.js`:**
+
+*   Inside the `DOMContentLoaded` event listener:
+    *   Get references to `#faq-link` and `#faq-content`.
+    *   Add a `click` event listener to `#faq-link`.
+    *   In the callback, toggle the `hidden` class on `#faq-content` (`faqContent.classList.toggle('hidden');`).
+
+**Visual Plan (Mermaid Diagram):**
+
+```mermaid
+graph TD
+    A[User Clicks "FAQ" Link (#faq-link)] --> B{Toggle Visibility of #faq-content};
+    B -- Was Hidden --> C[Show #faq-content];
+    B -- Was Visible --> D[Hide #faq-content];
+
+    subgraph HTML Changes (index.html)
+        direction TB
+        E(body) --> F(nav);
+        F --> G(a#faq-link{"FAQ"});
+        E --> H(div#faq-content.hidden);
+        H --> I(Formatted FAQ Text);
+        E --> J(Existing Content: #notification-banner, #app-container, etc.);
+    end
+
+    subgraph JavaScript Changes (script.js)
+        direction TB
+        K(DOMContentLoaded) --> L{Get Elements};
+        L --> M(faqLink = getElementById('faq-link'));
+        L --> N(faqContent = getElementById('faq-content'));
+        K --> O{Add Event Listener};
+        O --> P(faqLink.addEventListener('click', toggleFaq));
+        P --> Q{toggleFaq Function};
+        Q --> R(faqContent.classList.toggle('hidden'));
+    end
+
+    A -- triggers --> O;
+    C -- modifies --> H;
+    D -- modifies --> H;

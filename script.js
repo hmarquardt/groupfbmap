@@ -38,6 +38,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const submitDeleteButton = document.getElementById('submit-delete-button');
     const deleteError = document.getElementById('delete-error');
     const avatarInput = document.getElementById('avatar-input'); // Added for GFM-014
+    const faqLink = document.getElementById('faq-link'); // Added for FAQ
+    const faqContent = document.getElementById('faq-content'); // Added for FAQ
+    const notificationBanner = document.getElementById('notification-banner'); // Added for notification close
+    const notificationCloseButton = document.getElementById('notification-close-button'); // Added for notification close
 
     // --- State Variables ---
     let currentLatitude = null;
@@ -502,24 +506,25 @@ async function getPresignedUploadUrl(filename, contentType) {
         console.log("Delete form submitted.");
 
         const deleteToken = deleteTokenInput.value.trim();
+        const currentGroupId = localStorage.getItem('group_id'); // Need group ID for the API call
 
-        // Basic validation
-        if (!deleteToken || !/^[a-f0-9]{32}$/.test(deleteToken)) {
-             deleteError.textContent = "Please enter a valid 32-character delete token.";
+        if (!deleteToken || !currentGroupId) {
+            deleteError.textContent = "Delete Token and current Group ID are required.";
+            deleteError.classList.remove('hidden');
+            return;
+        }
+
+        // Basic token format validation (32 hex chars)
+        if (!/^[a-f0-9]{32}$/.test(deleteToken)) {
+             deleteError.textContent = "Invalid Delete Token format.";
              deleteError.classList.remove('hidden');
              return;
         }
 
         submitDeleteButton.disabled = true;
-        submitDeleteButton.textContent = 'Deleting...'; // Add loading state
+        submitDeleteButton.textContent = 'Deleting...';
         deleteError.classList.add('hidden');
         deleteError.textContent = '';
-
-        const payload = {
-            delete_token: deleteToken
-        };
-
-        console.log("Calling DELETE /members with token:", deleteToken);
 
         try {
             const response = await fetch(`${API_ENDPOINT}/members`, {
@@ -527,74 +532,79 @@ async function getPresignedUploadUrl(filename, contentType) {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(payload),
+                body: JSON.stringify({
+                    group_id: currentGroupId,
+                    delete_token: deleteToken
+                }),
             });
 
-            if (response.status === 204) { // No Content - Success
+            if (response.status === 200) { // OK
                 console.log("API Delete Success");
-                showNotification("Success! Your entry has been deleted from the map.", 'success'); // Use notification banner
+                showNotification("Success! Your entry has been deleted from the map.", 'success');
 
-                // Clear stored token (find the right key first - tricky without group/member ID easily available here)
-                // We'll just clear the generic one for now, and rely on switch group to clear specific ones
-                // A better approach might be needed if users manage multiple groups without switching
-                const currentGroupId = localStorage.getItem('group_id');
-                const currentMemberId = localStorage.getItem('member_id');
-                 if (currentGroupId && currentMemberId) {
-                     const tokenKey = `delete_token_${currentGroupId}_${currentMemberId}`;
-                     if (localStorage.getItem(tokenKey) === deleteToken) {
-                         localStorage.removeItem(tokenKey);
-                         console.log(`Removed token ${tokenKey} from localStorage.`);
-                         // Also remove group/member id since they are now deleted
-                         localStorage.removeItem('group_id');
-                         localStorage.removeItem('member_id');
-                     }
-                 }
-
-
-                // Refresh the view (will likely show 'Getting Started' now)
-                initializeApp();
+                // Clear related local storage
+                const memberId = localStorage.getItem('member_id'); // Get member ID before clearing
+                if (memberId) {
+                    localStorage.removeItem(`delete_token_${currentGroupId}_${memberId}`);
+                }
+                // Should we clear group_id and member_id here? Maybe not, user might want to stay on the same map.
+                // Let's just reload the map data for the current group.
+                loadMapData(currentGroupId); // Reload map to show removal
+                showView('map'); // Go back to map view
 
             } else {
-                 // Handle API errors (404 Not Found, 400 Bad Request, etc.)
-                 const responseBody = await response.json().catch(() => ({})); // Try to parse error
-                 console.error("API Delete Error:", response.status, responseBody);
-                 let deleteUserErrorMessage = responseBody.error || `Server responded with status ${response.status}`;
-                 if (deleteUserErrorMessage.includes("Delete token not found")) {
-                     deleteUserErrorMessage = "Delete token not found or invalid. Please double-check the token.";
-                 } else if (response.status === 500) {
-                     deleteUserErrorMessage = "An internal server error occurred while deleting. Please try again later.";
-                 }
-                 deleteError.textContent = `Error: ${deleteUserErrorMessage}`;
-                 deleteError.classList.remove('hidden');
+                const responseBody = await response.json().catch(() => ({ error: `Server responded with status ${response.status}` }));
+                console.error("API Delete Error:", response.status, responseBody);
+                let userErrorMessage = responseBody.error || `Server responded with status ${response.status}`;
+                if (response.status === 404) {
+                    userErrorMessage = "Entry not found. Check the Group ID and Delete Token.";
+                } else if (response.status === 403) {
+                    userErrorMessage = "Forbidden. The Delete Token does not match the entry.";
+                } else if (response.status === 500) {
+                    userErrorMessage = "An internal server error occurred during deletion.";
+                }
+                deleteError.textContent = `Error: ${userErrorMessage}`;
+                deleteError.classList.remove('hidden');
             }
-
         } catch (error) {
             console.error("Network or Fetch Error during delete:", error);
-            deleteError.textContent = "Network error. Please check your connection and try again.";
+            deleteError.textContent = "Network error during deletion. Please check connection.";
             deleteError.classList.remove('hidden');
         } finally {
-            submitDeleteButton.disabled = false;
-            submitDeleteButton.textContent = 'Delete My Entry Permanently'; // Restore text
+            if (!deleteDialog.classList.contains('hidden')) {
+                submitDeleteButton.disabled = false;
+                submitDeleteButton.textContent = 'Delete My Entry Permanently';
+            }
         }
-    });
-// --- Notification Close Button Listener ---
-const closeButton = document.getElementById('notification-close-button');
-const banner = document.getElementById('notification-banner');
-if (closeButton && banner) {
-    closeButton.addEventListener('click', () => {
-        banner.classList.remove('opacity-100', 'pointer-events-auto');
-        banner.classList.add('opacity-0', 'pointer-events-none');
-        // Clear any lingering timeout just in case (though it shouldn't exist anymore)
-        if (notificationTimeoutId) {
-            clearTimeout(notificationTimeoutId);
-            notificationTimeoutId = null;
-        }
-    });
-} else {
-    console.error("Could not find notification banner or close button to attach listener.");
-}
+    }); // End Delete Form Submission
 
+    // Notification Close Button Handler
+    if (notificationCloseButton && notificationBanner) {
+        notificationCloseButton.addEventListener('click', () => {
+            console.log("Notification close button clicked.");
+            notificationBanner.classList.add('opacity-0', 'pointer-events-none');
+            notificationBanner.classList.remove('opacity-100', 'pointer-events-auto');
+            // Clear any pending hide timeout if the user closes it manually
+            if (notificationTimeoutId) {
+                clearTimeout(notificationTimeoutId);
+                notificationTimeoutId = null;
+            }
+        });
+    } else {
+        console.warn("Notification close button or banner element not found.");
+    }
 
-// --- Run Initialization ---
-initializeApp();
-});
+    // FAQ Link Click Handler
+    if (faqLink && faqContent) {
+        faqLink.addEventListener('click', () => {
+            console.log("FAQ link clicked.");
+            faqContent.classList.toggle('hidden');
+        });
+    } else {
+        console.warn("FAQ link or content element not found.");
+    }
+
+    // --- Initialize App ---
+    initializeApp();
+
+}); // End DOMContentLoaded

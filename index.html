@@ -11,6 +11,89 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 </head>
 <body class="bg-gray-100 font-sans leading-normal tracking-normal">
+    <!-- FAQ Navbar -->
+    <nav class="bg-gray-800 text-white p-2 flex justify-end">
+        <a id="faq-link" class="hover:underline cursor-pointer px-3">FAQ</a>
+    </nav>
+
+    <!-- FAQ Content (hidden by default) -->
+    <div id="faq-content" class="hidden bg-white p-6 mt-2 rounded shadow-md max-w-3xl mx-auto">
+        <h1 class="text-2xl font-bold mb-4">📍 GroupFBMap – Frequently Asked Questions</h1>
+
+        <h2 class="text-xl font-semibold mt-4 mb-2">❓ What is GroupFBMap?</h2>
+        <p class="mb-3">GroupFBMap is a free web app that helps members of Facebook groups voluntarily show their approximate location on a shared, interactive map. It’s a fun and privacy-conscious way to see where everyone’s from!</p>
+        <p class="mb-3">🔗 Visit the site: <a href="https://groupfbmap.com" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">https://groupfbmap.com</a></p>
+        <p class="mb-3">💻 View the code: <a href="https://github.com/YOUR_USERNAME/groupfbmap" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">GitHub Repo</a> <span class="text-gray-500 text-sm">(Replace YOUR_USERNAME with the actual repo owner if different)</span></p>
+
+        <h2 class="text-xl font-semibold mt-4 mb-2">👀 Where do I start?</h2>
+        <p class="mb-3">On the homepage, you’ll see two main actions:</p>
+        <ul class="list-disc list-inside mb-3 ml-4">
+            <li><strong>View Group Map</strong> – Enter your Facebook Group ID to view the map for that group.</li>
+            <li><strong>Add Me to a Group Map</strong> – Join the map by submitting your info.</li>
+        </ul>
+        <p class="mb-3 italic text-gray-600">(Consider adding the homepage screenshot here if possible)</p>
+
+
+        <h2 class="text-xl font-semibold mt-4 mb-2">🧭 How do I add myself to a group map?</h2>
+        <p class="mb-3">Click "Add Me to a Group Map" on the homepage, then:</p>
+        <ol class="list-decimal list-inside mb-3 ml-4 space-y-1">
+            <li>Allow your browser to access your location.</li>
+            <li>Enter your:
+                <ul class="list-disc list-inside ml-6 mt-1">
+                    <li>First Name</li>
+                    <li>Facebook Group Profile URL (you can find this in your group’s member list)</li>
+                    <li>(Optional) Upload a small avatar.</li>
+                </ul>
+            </li>
+            <li>Submit your entry.</li>
+            <li>You’ll receive a <code>Delete Token</code> — save it somewhere safe!</li>
+        </ol>
+
+        <h2 class="text-xl font-semibold mt-4 mb-2">🔁 What if I move or want to change my info?</h2>
+        <p class="mb-3">No problem! Simply:</p>
+        <ol class="list-decimal list-inside mb-3 ml-4 space-y-1">
+            <li>Use your <code>Delete Token</code> to remove your old entry.</li>
+            <li>Re-submit your info with your new location using the "Add Me to a Group Map" button.</li>
+        </ol>
+
+        <h2 class="text-xl font-semibold mt-4 mb-2">🔐 What is the Delete Token for?</h2>
+        <p class="mb-3">Your <code>Delete Token</code> allows you to manage your entry later (e.g., delete it).</p>
+        <ul class="list-disc list-inside mb-3 ml-4 space-y-1">
+            <li>If you’ve only joined one group, the token is stored locally on your device.</li>
+            <li>If you join multiple groups, only the most recent token is saved locally.</li>
+            <li>We strongly recommend copying and saving your token (e.g., in a note or email) when it’s shown.</li>
+            <li>Without it, we cannot delete your entry — this is intentional for privacy reasons.</li>
+        </ul>
+
+        <h2 class="text-xl font-semibold mt-4 mb-2">🗺️ Who can see my profile and location?</h2>
+        <p class="mb-3">In private Facebook groups, only other members will be able to view your profile via your map entry.</p>
+        <p class="mb-3">In public groups, anyone with your Facebook Group Profile URL can access your profile.</p>
+        <p class="mb-3">For extra privacy:</p>
+        <ul class="list-disc list-inside mb-3 ml-4 space-y-1">
+            <li>Use a pseudonym instead of your real name.</li>
+            <li>Skip the avatar upload.</li>
+            <li>Your map location is intentionally dithered by a small random amount (0.005–0.01 degrees) to prevent showing your exact address.</li>
+        </ul>
+
+        <h2 class="text-xl font-semibold mt-4 mb-2">📌 Can I join maps for multiple groups?</h2>
+        <p class="mb-3">Yes, you can join as many different group maps as you’d like. Just remember:</p>
+        <ul class="list-disc list-inside mb-3 ml-4 space-y-1">
+            <li>Each entry generates a new <code>Delete Token</code>.</li>
+            <li>Only the last token is stored on your device, so save them all individually if needed.</li>
+        </ul>
+
+        <h2 class="text-xl font-semibold mt-4 mb-2">🧼 How do I remove myself from a map?</h2>
+        <ol class="list-decimal list-inside mb-3 ml-4 space-y-1">
+            <li>Go to the relevant group’s map via the “View Group Map” button.</li>
+            <li>Click “Manage My Entry.”</li>
+            <li>Enter your <code>Delete Token</code> and confirm removal.</li>
+        </ol>
+
+        <h2 class="text-xl font-semibold mt-4 mb-2">❓ I lost my Delete Token. Can you help?</h2>
+        <p class="mb-3">Sorry — without your token, we cannot verify your entry for deletion.</p>
+        <p class="mb-3">You can always add a new entry if needed, but we cannot remove the old one without the original token.</p>
+    </div>
+
     <!-- Notification Banner (hidden by default) -->
     <div id="notification-banner" class="fixed top-0 left-0 right-0 p-4 text-center text-white z-50 transition-opacity duration-500 ease-in-out opacity-0 pointer-events-none flex justify-between items-center">
         <span id="notification-message" class="flex-grow mr-4"></span> <!-- Span to hold the message -->
