@@ -49,10 +49,11 @@ let notificationTimeoutId = null;
 
 // --- Helper Functions ---
 // Function to display non-blocking notifications
-function showNotification(message, type = 'success', duration = 5000) {
+function showNotification(message, type = 'success') { // Removed duration parameter
     const banner = document.getElementById('notification-banner');
-    if (!banner) {
-        console.error("Notification banner element not found!");
+    const messageSpan = document.getElementById('notification-message');
+    if (!banner || !messageSpan) {
+        console.error("Notification banner or message span element not found!");
         return;
     }
 
@@ -63,7 +64,7 @@ function showNotification(message, type = 'success', duration = 5000) {
     }
 
     // Set message and style based on type
-    banner.textContent = message;
+    messageSpan.textContent = message; // Set message in the span
     banner.classList.remove('bg-green-500', 'bg-red-500'); // Remove previous colors
     if (type === 'success') {
         banner.classList.add('bg-green-500');
@@ -75,14 +76,7 @@ function showNotification(message, type = 'success', duration = 5000) {
     banner.classList.remove('opacity-0', 'pointer-events-none');
     banner.classList.add('opacity-100', 'pointer-events-auto');
 
-    // Set timeout to hide the banner
-    if (duration > 0) {
-        notificationTimeoutId = setTimeout(() => {
-            banner.classList.remove('opacity-100', 'pointer-events-auto');
-            banner.classList.add('opacity-0', 'pointer-events-none');
-            notificationTimeoutId = null; // Clear the ID after timeout runs
-        }, duration);
-    }
+    // Banner remains visible until closed manually (timeout removed)
 }
 
     // --- Helper Functions ---
@@ -134,7 +128,7 @@ function showNotification(message, type = 'success', duration = 5000) {
 
             if (members.length === 0 && !localStorage.getItem(`alerted_empty_${groupId}`)) {
                  // Only alert once per session for an empty group
-                 showNotification(`No members have added themselves to the map for group ${groupId} yet. Be the first!`, 'success', 7000); // Use notification banner, longer duration
+                 showNotification(`No members have added themselves to the map for group ${groupId} yet. Be the first!`, 'success'); // Duration removed
                  localStorage.setItem(`alerted_empty_${groupId}`, 'true'); // Use sessionStorage if you only want it per tab session
             }
 
@@ -443,10 +437,8 @@ function showNotification(message, type = 'success', duration = 5000) {
                 localStorage.setItem('member_id', memberId);
                 localStorage.setItem(`delete_token_${groupId}_${memberId}`, deleteToken);
 
-                // Show success notification. Remind user about the token they should have saved.
-                // The prompt was removed as it's blocking. The token is sensitive and shouldn't linger in a banner.
-                // Ideally, the token was presented clearly upon generation (which the prompt did).
-                showNotification(`Success! You've been added to the map for group ${groupId}. IMPORTANT: Ensure you have saved your Delete Token securely.`, 'success', 7000);
+                // Show success notification including the delete token.
+                showNotification(`Success! Added to map for group ${groupId}. SAVE THIS DELETE TOKEN: ${deleteToken}`, 'success');
                 showView('map');
                 loadMapData(groupId);
 
@@ -585,7 +577,24 @@ async function getPresignedUploadUrl(filename, contentType) {
             submitDeleteButton.textContent = 'Delete My Entry Permanently'; // Restore text
         }
     });
+// --- Notification Close Button Listener ---
+const closeButton = document.getElementById('notification-close-button');
+const banner = document.getElementById('notification-banner');
+if (closeButton && banner) {
+    closeButton.addEventListener('click', () => {
+        banner.classList.remove('opacity-100', 'pointer-events-auto');
+        banner.classList.add('opacity-0', 'pointer-events-none');
+        // Clear any lingering timeout just in case (though it shouldn't exist anymore)
+        if (notificationTimeoutId) {
+            clearTimeout(notificationTimeoutId);
+            notificationTimeoutId = null;
+        }
+    });
+} else {
+    console.error("Could not find notification banner or close button to attach listener.");
+}
 
-    // --- Run Initialization ---
-    initializeApp();
+
+// --- Run Initialization ---
+initializeApp();
 });

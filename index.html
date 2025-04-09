@@ -12,8 +12,9 @@
 </head>
 <body class="bg-gray-100 font-sans leading-normal tracking-normal">
     <!-- Notification Banner (hidden by default) -->
-    <div id="notification-banner" class="fixed top-0 left-0 right-0 p-4 text-center text-white z-50 transition-opacity duration-500 ease-in-out opacity-0 pointer-events-none">
-        <!-- Content will be set by JS -->
+    <div id="notification-banner" class="fixed top-0 left-0 right-0 p-4 text-center text-white z-50 transition-opacity duration-500 ease-in-out opacity-0 pointer-events-none flex justify-between items-center">
+        <span id="notification-message" class="flex-grow mr-4"></span> <!-- Span to hold the message -->
+        <button id="notification-close-button" class="text-xl font-bold leading-none hover:text-gray-300 focus:outline-none">&times;</button> <!-- Close button -->
     </div>
 
     <!-- Loading Indicator -->
