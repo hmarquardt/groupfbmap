@@ -1,6 +1,7 @@
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { randomUUID } from 'crypto'; // Use crypto for UUID generation
+// Use CommonJS require syntax
+const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
+const { randomUUID } = require('crypto');
 
 const s3Client = new S3Client({ region: process.env.AWS_REGION || 'us-west-2' }); // Default region if not set
 const bucketName = process.env.S3_BUCKET_NAME;
@@ -9,24 +10,10 @@ const MAX_FILE_SIZE_MB = 1; // Match frontend validation
 const ALLOWED_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 const AVATAR_PREFIX = 'avatars/'; // Store avatars in an 'avatars/' folder
 
-export const handler = async (event) => {
-    console.log("Received event:", JSON.stringify(event, null, 2));
-
-    // Handle OPTIONS preflight request for HTTP API Payload 2.0
-    if (event.requestContext?.http?.method === 'OPTIONS') {
-        console.log("Handling OPTIONS preflight request");
-        return {
-            statusCode: 204, // No Content
-            headers: {
-                "Access-Control-Allow-Origin": "https://groupfbmap.com", // Be specific
-                "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
-                "Access-Control-Allow-Methods": "POST, OPTIONS",
-                "Access-Control-Max-Age": 86400
-            }
-        };
-    }
-
-    // Proceed with POST logic otherwise
+exports.handler = async (event) => {
+    // Assuming this handler is only invoked for POST requests now,
+    // relying on HTTP API CORS config to handle OPTIONS.
+    console.log("Received POST event:", JSON.stringify(event, null, 2));
 
     if (!bucketName) {
         console.error("S3_BUCKET_NAME environment variable not set.");
@@ -84,8 +71,16 @@ export const handler = async (event) => {
     });
 
     try {
+        // Add unsignableHeaders to prevent signing checksum headers browsers don't send
         const signedUrl = await getSignedUrl(s3Client, command, {
             expiresIn: UPLOAD_EXPIRATION_SECONDS,
+            unsignableHeaders: new Set([
+                'x-amz-checksum-crc32',
+                'x-amz-checksum-crc32c',
+                'x-amz-checksum-sha1',
+                'x-amz-checksum-sha256',
+                'x-amz-sdk-checksum-algorithm', // Explicitly prevent signing this if SDK adds it
+            ]),
         });
 
         console.log("Successfully generated pre-signed URL.");
@@ -93,12 +88,9 @@ export const handler = async (event) => {
         return {
             statusCode: 200,
             headers: {
-                "Content-Type": "application/json",
-                "Content-Type": "application/json",
-                // CORS headers might not be strictly needed here for POST response
-                // if the OPTIONS preflight is handled correctly, but doesn't hurt.
-                "Access-Control-Allow-Origin": "https://groupfbmap.com"
-             },
+                "Content-Type": "application/json"
+                // Let HTTP API CORS config handle Access-Control-Allow-Origin
+            },
             body: JSON.stringify({
                 uploadUrl: signedUrl,
                 key: uniqueKey, // Send the key back to the client
