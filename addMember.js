@@ -1,9 +1,9 @@
 // AWS SDK v3 clients
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, PutCommand } = require("@aws-sdk/lib-dynamodb");
-const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+const { S3Client } = require("@aws-sdk/client-s3"); // PutObjectCommand no longer needed here
 const crypto = require('crypto');
-const Jimp = require('jimp'); // Pure JS Image processing library
+// Jimp is no longer needed here
 
 // Initialize Clients
 const region = process.env.AWS_REGION || "us-west-2";
@@ -12,11 +12,11 @@ const docClient = DynamoDBDocumentClient.from(ddbClient);
 const s3Client = new S3Client({ region });
 
 const tableName = process.env.TABLE_NAME || "GroupMembers";
-const bucketName = process.env.BUCKET_NAME || "groupfbmap-avatars"; // S3 bucket for avatars
+const bucketName = process.env.S3_BUCKET_NAME || "groupfbmap-avatars"; // Renamed env var for consistency
 
 // Regular expression to parse Facebook Group Profile URL
 const fbGroupUrlRegex = /facebook\.com\/groups\/(\d+)\/user\/(\d+)\/?/;
-const MAX_AVATAR_WIDTH = 150;
+// MAX_AVATAR_WIDTH no longer needed here
 
 exports.handler = async (event) => {
     console.log("Event:", JSON.stringify(event, null, 2));
@@ -35,7 +35,8 @@ exports.handler = async (event) => {
     }
 
     // Added profile_picture_base64 (optional)
-    const { first_name, group_profile_url, latitude, longitude, profile_picture_base64 } = body;
+    // Expect profile_picture_s3_key instead of base64 data
+    const { first_name, group_profile_url, latitude, longitude, profile_picture_s3_key } = body;
 
     // --- Input Validation ---
     if (!first_name || !group_profile_url || latitude === undefined || longitude === undefined) {
@@ -68,46 +69,18 @@ exports.handler = async (event) => {
     // --- Generate Delete Token ---
     const delete_token = crypto.randomBytes(16).toString('hex');
 
-    // --- Process and Upload Avatar (if provided) ---
+    // --- Construct Profile Picture URL from S3 Key (if provided) ---
     let profile_picture_url = null;
-    if (profile_picture_base64) {
-        try {
-            console.log("Processing avatar...");
-            // Remove data URI prefix if present (e.g., "data:image/jpeg;base64,")
-            const base64Data = profile_picture_base64.replace(/^data:image\/\w+;base64,/, "");
-            const imageBuffer = Buffer.from(base64Data, 'base64');
-
-            // Resize image using Jimp
-            const image = await Jimp.read(imageBuffer);
-            await image.resize(MAX_AVATAR_WIDTH, Jimp.AUTO); // Resize width, maintain aspect ratio
-            await image.quality(80); // Set JPEG quality
-            const resizedBuffer = await image.getBufferAsync(Jimp.MIME_JPEG); // Get buffer as JPEG
-
-            // Define S3 key (e.g., group_id/member_id.jpg)
-            const s3Key = `${group_id}/${member_id}.jpg`;
-
-            // Upload to S3
-            const putObjectParams = {
-                Bucket: bucketName,
-                Key: s3Key,
-                Body: resizedBuffer,
-                ContentType: 'image/jpeg',
-                ACL: 'public-read' // Make avatar publicly readable
-            };
-            const putCommand = new PutObjectCommand(putObjectParams);
-            await s3Client.send(putCommand);
-
-            // Construct the public URL (adjust based on region and bucket settings if needed)
-            // Standard format: https://<bucket-name>.s3.<region>.amazonaws.com/<key>
-            profile_picture_url = `https://${bucketName}.s3.${region}.amazonaws.com/${s3Key}`;
-            console.log("Avatar uploaded successfully:", profile_picture_url);
-
-        } catch (imageError) {
-            console.error("Error processing or uploading image:", imageError);
-            // Decide if this should be a fatal error or just skip the avatar
-            // For now, we'll skip the avatar but still add the member
-            profile_picture_url = null; // Ensure it's null if upload failed
-             // Optionally return a specific error or warning? For now, just log it.
+    if (profile_picture_s3_key) {
+        // Validate the key format roughly if desired (e.g., check prefix)
+        if (typeof profile_picture_s3_key === 'string' && profile_picture_s3_key.startsWith('avatars/')) {
+             // Construct the public URL
+             // Standard format: https://<bucket-name>.s3.<region>.amazonaws.com/<key>
+             profile_picture_url = `https://${bucketName}.s3.${region}.amazonaws.com/${profile_picture_s3_key}`;
+             console.log("Constructed profile picture URL:", profile_picture_url);
+        } else {
+            console.warn("Received invalid profile_picture_s3_key format:", profile_picture_s3_key);
+            // Keep profile_picture_url as null if key is invalid
         }
     }
 

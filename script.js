@@ -306,50 +306,77 @@ document.addEventListener('DOMContentLoaded', () => {
             first_name: firstName,
             group_profile_url: groupProfileUrl,
             latitude: currentLatitude,
-            longitude: currentLongitude,
-            // profile_picture_base64: null // Initialize
+            longitude: currentLongitude
+            // No profile_picture_base64 initially
         };
 
-        // --- Handle Avatar File ---
+        // --- Handle Avatar File Upload via Pre-signed URL ---
         const avatarFile = avatarInput.files[0];
-        let avatarBase64 = null;
+        let s3ObjectKey = null; // Will store the key if upload is successful
 
         if (avatarFile) {
             console.log("Avatar file selected:", avatarFile.name, avatarFile.size, avatarFile.type);
             // Validate size (e.g., 1MB limit)
             if (avatarFile.size > 1 * 1024 * 1024) {
-                 joinError.textContent = "Avatar image must be less than 1MB.";
-                 joinError.classList.remove('hidden');
-                 submitJoinButton.disabled = false; // Re-enable button
-                 return;
+                joinError.textContent = "Avatar image must be less than 1MB.";
+                joinError.classList.remove('hidden');
+                submitJoinButton.disabled = false;
+                submitJoinButton.textContent = 'Submit My Location';
+                return;
             }
             // Validate type (simple check)
             if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(avatarFile.type)) {
-                 joinError.textContent = "Invalid avatar file type. Please use JPG, PNG, GIF, or WEBP.";
-                 joinError.classList.remove('hidden');
-                 submitJoinButton.disabled = false; // Re-enable button
-                 return;
+                joinError.textContent = "Invalid avatar file type. Please use JPG, PNG, GIF, or WEBP.";
+                joinError.classList.remove('hidden');
+                submitJoinButton.disabled = false;
+                submitJoinButton.textContent = 'Submit My Location';
+                return;
             }
 
+            submitJoinButton.textContent = 'Uploading Avatar...'; // Update status
+
             try {
-                avatarBase64 = await readFileAsBase64(avatarFile);
-                // Remove the data URI prefix (e.g., "data:image/jpeg;base64,")
-                payload.profile_picture_base64 = avatarBase64.split(',')[1];
-                console.log("Avatar read and encoded.");
-            } catch (readError) {
-                 console.error("Error reading avatar file:", readError);
-                 joinError.textContent = "Error processing avatar file.";
-                 joinError.classList.remove('hidden');
-                 submitJoinButton.disabled = false; // Re-enable button
-                 return;
+                // 1. Get pre-signed URL from our backend
+                const presignedData = await getPresignedUploadUrl(avatarFile.name, avatarFile.type);
+                if (!presignedData || !presignedData.uploadUrl || !presignedData.key) {
+                     throw new Error("Failed to get upload URL from server.");
+                }
+                console.log("Received pre-signed URL:", presignedData.uploadUrl);
+                console.log("Received S3 Key:", presignedData.key);
+
+                // 2. Upload the file directly to S3
+                const uploadResponse = await fetch(presignedData.uploadUrl, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': avatarFile.type // Crucial for S3
+                    },
+                    body: avatarFile
+                });
+
+                if (!uploadResponse.ok) {
+                    console.error("S3 Upload Error:", uploadResponse.status, await uploadResponse.text());
+                    throw new Error(`Failed to upload avatar to S3 (Status: ${uploadResponse.status}).`);
+                }
+
+                console.log("Avatar successfully uploaded to S3.");
+                s3ObjectKey = presignedData.key; // Store the key for the main API call
+                payload.profile_picture_s3_key = s3ObjectKey; // Add key to payload
+
+            } catch (uploadError) {
+                console.error("Error during avatar upload:", uploadError);
+                joinError.textContent = `Error uploading avatar: ${uploadError.message}`;
+                joinError.classList.remove('hidden');
+                submitJoinButton.disabled = false;
+                submitJoinButton.textContent = 'Submit My Location';
+                return;
             }
-        } else {
-             payload.profile_picture_base64 = null; // Explicitly set to null if no file
+             submitJoinButton.textContent = 'Submitting...'; // Back to submitting main data
         }
+        // If no avatarFile, payload remains without profile_picture_s3_key
 
 
         // --- Call API ---
-        console.log("Calling POST /members with payload:", { ...payload, profile_picture_base64: payload.profile_picture_base64 ? '[BASE64 DATA]' : null }); // Don't log full base64
+        console.log("Calling POST /members with payload:", payload); // Log the final payload (key included if avatar uploaded)
 
         try {
             const response = await fetch(`${API_ENDPOINT}/members`, {
@@ -406,16 +433,36 @@ document.addEventListener('DOMContentLoaded', () => {
              }
         }
     });
-
-    // Helper function to read file as Base64
-    function readFileAsBase64(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = (error) => reject(error);
-            reader.readAsDataURL(file);
+// Helper function to get pre-signed S3 upload URL
+async function getPresignedUploadUrl(filename, contentType) {
+    console.log(`Requesting pre-signed URL for: ${filename} (${contentType})`);
+    try {
+        const response = await fetch(`${API_ENDPOINT}/members/upload-url`, { // NEW ENDPOINT
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                filename: filename,
+                contentType: contentType
+             }),
         });
+        if (!response.ok) {
+             const errorData = await response.json().catch(() => ({}));
+             console.error("Error fetching pre-signed URL:", response.status, errorData);
+             throw new Error(errorData.error || `Server error ${response.status}`);
+        }
+        const data = await response.json();
+        // Expecting { uploadUrl: "...", key: "..." }
+        return data;
+    } catch (error) {
+        console.error("Network or Fetch Error getting pre-signed URL:", error);
+        throw error; // Re-throw to be caught by the caller
     }
+}
+
+// Base64 helper is no longer needed for upload, removing it.
+// function readFileAsBase64(file) { ... }
 
     // Delete Form Submission
     deleteForm.addEventListener('submit', async (event) => {
