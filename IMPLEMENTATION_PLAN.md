@@ -113,3 +113,67 @@ graph TD
         GFM015 --> GFM016
         GFM016 --> GFM017
     end
+
+---
+
+## Revision: Non-Blocking Notifications & .gitignore Update (2025-04-09)
+
+This revision addresses the request to replace blocking `alert`/`prompt` dialogs with a non-blocking UI notification banner and to add `*.zip` to the `.gitignore` file.
+
+**1. Implement Non-Blocking Notifications:**
+
+*   **HTML (`index.html`):** Add a `div` element near the top of the `<body>`, styled to be fixed or absolutely positioned at the top of the viewport. It will be hidden by default.
+    *   Example: `<div id="notification-banner" class="notification hidden"></div>`
+*   **CSS (`style.css`):**
+    *   Add styles for `#notification-banner` defining its position (e.g., `position: fixed; top: 0; left: 0; right: 0; z-index: 1000;`), padding, text alignment, etc.
+    *   Add styles for the base `.notification` class (e.g., transitions for showing/hiding).
+    *   Create modifier classes for different states:
+        *   `.notification-success` { background-color: lightgreen; color: black; }
+        *   `.notification-error` { background-color: lightcoral; color: white; }
+    *   Add styles for the `.hidden` class (`display: none;` or similar).
+    *   (Optional) Include styling for a small 'x' close button within the banner.
+*   **JavaScript (`script.js`):**
+    *   Create a new helper function, `showNotification(message, type = 'success', duration = 5000)`:
+        *   Accepts message text, type ('success' or 'error'), and optional auto-hide duration.
+        *   Finds the `#notification-banner` element.
+        *   Sets the `textContent` of the banner.
+        *   Applies the correct type class (`notification-${type}`).
+        *   Removes the `hidden` class.
+        *   Uses `setTimeout` to re-add the `hidden` class after `duration` (if positive). Clears existing timeouts.
+        *   (Optional) Add event listener for a close button.
+    *   **Modify `joinForm` Submit Handler:**
+        *   Replace `prompt(...)` (line ~408) with:
+            `showNotification("Success! You've been added. IMPORTANT: Your Delete Token was previously shown and needs to be saved securely.", 'success', 7000);`
+    *   **Modify `deleteForm` Submit Handler:**
+        *   Replace `alert(...)` (line ~503) with:
+            `showNotification("Success! Your entry has been deleted from the map.", 'success');`
+    *   **Replace Error Alerts:** Replace other error `alert()` calls (e.g., lines ~85, ~97, ~130, ~170, etc.) with `showNotification(errorMessage, 'error')` for consistency.
+
+**2. Update `.gitignore`:**
+
+*   Read the current content of the `.gitignore` file.
+*   Append the line `*.zip` to the end of the content, ensuring it's on a new line.
+*   Write the updated content back to the `.gitignore` file.
+
+**Notification Logic (Mermaid Diagram):**
+
+```mermaid
+graph TD
+    subgraph User Action
+        A[Submit Join/Delete Form] --> B{API Call};
+    end
+
+    subgraph API Response Handling (script.js)
+        B -- Success --> C[Call showNotification('Success Message', 'success')];
+        B -- Error --> D[Call showNotification('Error Message', 'error')];
+    end
+
+    subgraph Notification UI (HTML/CSS/JS)
+        C --> E{Update Banner Text & Style};
+        D --> E;
+        E --> F[Show Banner];
+        F -- After Timeout / Close Click --> G[Hide Banner];
+    end
+
+    style F fill:#lightgreen,stroke:#333,stroke-width:2px
+    style G fill:#grey,stroke:#333,stroke-width:1px

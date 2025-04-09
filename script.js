@@ -44,6 +44,46 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentLongitude = null;
     const API_ENDPOINT = 'https://v4cpsska29.execute-api.us-west-2.amazonaws.com/prod'; // Use the 'prod' stage endpoint
     let memberMarkers = L.featureGroup().addTo(map); // Use FeatureGroup to get access to getBounds()
+// --- Global variable for notification timeout ---
+let notificationTimeoutId = null;
+
+// --- Helper Functions ---
+// Function to display non-blocking notifications
+function showNotification(message, type = 'success', duration = 5000) {
+    const banner = document.getElementById('notification-banner');
+    if (!banner) {
+        console.error("Notification banner element not found!");
+        return;
+    }
+
+    // Clear any existing timeout to prevent premature hiding
+    if (notificationTimeoutId) {
+        clearTimeout(notificationTimeoutId);
+        notificationTimeoutId = null;
+    }
+
+    // Set message and style based on type
+    banner.textContent = message;
+    banner.classList.remove('bg-green-500', 'bg-red-500'); // Remove previous colors
+    if (type === 'success') {
+        banner.classList.add('bg-green-500');
+    } else { // 'error' or any other type defaults to error style
+        banner.classList.add('bg-red-500');
+    }
+
+    // Make the banner visible
+    banner.classList.remove('opacity-0', 'pointer-events-none');
+    banner.classList.add('opacity-100', 'pointer-events-auto');
+
+    // Set timeout to hide the banner
+    if (duration > 0) {
+        notificationTimeoutId = setTimeout(() => {
+            banner.classList.remove('opacity-100', 'pointer-events-auto');
+            banner.classList.add('opacity-0', 'pointer-events-none');
+            notificationTimeoutId = null; // Clear the ID after timeout runs
+        }, duration);
+    }
+}
 
     // --- Helper Functions ---
     function showView(viewToShow) {
@@ -82,7 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
                  const errorData = await response.json().catch(() => ({})); // Try to parse error, default to empty obj
                  const errorMsg = `Error loading members for group ${groupId}: ${errorData.error || response.statusText || 'Unknown error'}`;
                  console.error(errorMsg, response.status);
-                 alert(errorMsg); // Use alert for now, could be replaced with a nicer UI element
+                 showNotification(errorMsg, 'error'); // Use notification banner
                  // Decide if we should show getting started or just an empty map
                  // For now, just show the empty map view
                  showView('map');
@@ -94,7 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (members.length === 0 && !localStorage.getItem(`alerted_empty_${groupId}`)) {
                  // Only alert once per session for an empty group
-                 alert(`No members have added themselves to the map for group ${groupId} yet. Be the first!`);
+                 showNotification(`No members have added themselves to the map for group ${groupId} yet. Be the first!`, 'success', 7000); // Use notification banner, longer duration
                  localStorage.setItem(`alerted_empty_${groupId}`, 'true'); // Use sessionStorage if you only want it per tab session
             }
 
@@ -127,7 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             console.error("Network or Fetch Error loading members:", error);
-            alert("Network error fetching members. Please check your connection and try again.");
+            showNotification("Network error fetching members. Please check your connection and try again.", 'error');
             // Show getting started dialog on network error? Or just map view?
             showView('map'); // Show map view even on error for now
         } finally {
@@ -167,7 +207,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showView('map');
             loadMapData(groupId);
         } else {
-            alert("Please enter a valid Facebook Group ID to view its map.");
+            showNotification("Please enter a valid Facebook Group ID to view its map.", 'error');
         }
     });
 
@@ -403,10 +443,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.setItem('member_id', memberId);
                 localStorage.setItem(`delete_token_${groupId}_${memberId}`, deleteToken);
 
-                // Use a more robust way to display the token, maybe a dedicated modal?
-                // For now, using prompt which allows copying easily.
-                prompt(`Success! You've been added to the map for group ${groupId}.\n\nIMPORTANT: Copy and save this Delete Token securely. You NEED it to remove your entry later, especially if you clear browser data:\n`, deleteToken);
-
+                // Show success notification. Remind user about the token they should have saved.
+                // The prompt was removed as it's blocking. The token is sensitive and shouldn't linger in a banner.
+                // Ideally, the token was presented clearly upon generation (which the prompt did).
+                showNotification(`Success! You've been added to the map for group ${groupId}. IMPORTANT: Ensure you have saved your Delete Token securely.`, 'success', 7000);
                 showView('map');
                 loadMapData(groupId);
 
@@ -500,7 +540,7 @@ async function getPresignedUploadUrl(filename, contentType) {
 
             if (response.status === 204) { // No Content - Success
                 console.log("API Delete Success");
-                alert("Success! Your entry has been deleted from the map."); // Simple confirmation
+                showNotification("Success! Your entry has been deleted from the map.", 'success'); // Use notification banner
 
                 // Clear stored token (find the right key first - tricky without group/member ID easily available here)
                 // We'll just clear the generic one for now, and rely on switch group to clear specific ones
