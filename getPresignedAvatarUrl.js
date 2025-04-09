@@ -12,6 +12,22 @@ const AVATAR_PREFIX = 'avatars/'; // Store avatars in an 'avatars/' folder
 export const handler = async (event) => {
     console.log("Received event:", JSON.stringify(event, null, 2));
 
+    // Handle OPTIONS preflight request for HTTP API Payload 2.0
+    if (event.requestContext?.http?.method === 'OPTIONS') {
+        console.log("Handling OPTIONS preflight request");
+        return {
+            statusCode: 204, // No Content
+            headers: {
+                "Access-Control-Allow-Origin": "https://groupfbmap.com", // Be specific
+                "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
+                "Access-Control-Allow-Methods": "POST, OPTIONS",
+                "Access-Control-Max-Age": 86400
+            }
+        };
+    }
+
+    // Proceed with POST logic otherwise
+
     if (!bucketName) {
         console.error("S3_BUCKET_NAME environment variable not set.");
         return {
@@ -78,10 +94,11 @@ export const handler = async (event) => {
             statusCode: 200,
             headers: {
                 "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*", // Adjust for specific origin in production
-                "Access-Control-Allow-Headers": "Content-Type",
-                "Access-Control-Allow-Methods": "POST, OPTIONS" // Allow POST and preflight OPTIONS
-            },
+                "Content-Type": "application/json",
+                // CORS headers might not be strictly needed here for POST response
+                // if the OPTIONS preflight is handled correctly, but doesn't hurt.
+                "Access-Control-Allow-Origin": "https://groupfbmap.com"
+             },
             body: JSON.stringify({
                 uploadUrl: signedUrl,
                 key: uniqueKey, // Send the key back to the client
@@ -97,17 +114,4 @@ export const handler = async (event) => {
     }
 };
 
-// Add handler for OPTIONS preflight requests needed for CORS with custom headers/methods
-export const optionsHandler = async (event) => {
-    console.log("Received OPTIONS request:", JSON.stringify(event, null, 2));
-    return {
-        statusCode: 204, // No Content
-        headers: {
-            "Access-Control-Allow-Origin": "*", // Be more specific in production
-            "Access-Control-Allow-Headers": "Content-Type", // Allow Content-Type header
-            "Access-Control-Allow-Methods": "POST, OPTIONS", // Allow POST and OPTIONS methods
-            "Access-Control-Max-Age": 86400 // Cache preflight response for 1 day
-        },
-        body: '',
-    };
-};
+// optionsHandler is no longer needed as OPTIONS is handled within the main handler
