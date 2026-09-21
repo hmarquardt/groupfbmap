@@ -1,8 +1,11 @@
 # GroupFBMap - Facebook Group Member Map
 
+> [!IMPORTANT]
+> **This project was shut down on September 21, 2026.** The public service is no longer operational, its AWS backend has been decommissioned, and its stored member and avatar data has been permanently deleted. This repository remains available only as an archived reference.
+
 ## Description
 
-GroupFBMap is a web application that allows members of a Facebook group to voluntarily share their approximate location on an interactive map. This helps visualize the geographic distribution of the group's members. Users can join a specific group's map, view existing members, and manage their own entry.
+GroupFBMap was a web application that allowed members of a Facebook group to voluntarily share their approximate location on an interactive map. It helped visualize the geographic distribution of the group's members. Users could join a specific group's map, view existing members, and manage their own entry.
 
 ## Features
 
